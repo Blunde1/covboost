@@ -1,11 +1,14 @@
 Package: covboost
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Estimate High Dimensional Possibly Sparse Covariance Matrices Through Boosting
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
+Authors@R: c(person("Berent Ånund Strømnes","Lunde",role=c("aut","cre","cph"),email="lundeberent@gmail.com"))
+Maintainer: Berent Ånund Strømnes Lunde <lundeberent@gmail.com>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+License: GPL (>= 2)
 Encoding: UTF-8
+Imports: mvtnorm
+Suggests: ggplot2
 LazyData: true
+RoxygenNote: 6.1.1
