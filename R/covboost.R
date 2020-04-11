@@ -20,7 +20,7 @@
 #' lrn_rate <- 0.2
 #' cov_cv <- covboost_cv(x, learning_rate=lrn_rate)
 #' cov_cv$cvplot
-#' niter <- cov_cv$opt_iter
+#' cov_cv$opt_iter
 #' sigma <- covboost(x, niter=cov_cv$opt_iter, learning_rate=lrn_rate)
 #' sigma$cov
 #' sigma$plot

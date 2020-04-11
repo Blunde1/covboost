@@ -6,9 +6,9 @@ Authors@R: c(person("Berent Ånund Strømnes","Lunde",role=c("aut","cre","cph"),
 Maintainer: Berent Ånund Strømnes Lunde <lundeberent@gmail.com>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
-License: GPL (>= 2)
+License: GPL-3
 Encoding: UTF-8
-Imports: mvtnorm
+Imports: mvtnorm, stats, utils
 Suggests: ggplot2, reshape2
 LazyData: true
 RoxygenNote: 6.1.1
