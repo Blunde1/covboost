@@ -12,6 +12,8 @@ covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10)
 \item{learning_rate}{Scaling the path of elements in the covariance matrix}
 
 \item{niter}{The number of boosting iterations}
+
+\item{nfolds}{The number of folds for k-fold cross validation}
 }
 \value{
 A list of useful cross validation information from boosting out the covariance matrix

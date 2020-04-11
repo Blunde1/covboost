@@ -1,11 +1,9 @@
 ## Copyright (C) 2020 Berent Lunde
 ## License: GPL-3
 
-# covboost
-
 #' Add together two numbers
 #'
-#' @param x An \code{n x p} matrix or data frame of dimensions n
+#' @param x An \code{n X p} matrix or data frame of dimensions n
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
 #' @return A list of useful boosting information, most importantly the covariance matrix

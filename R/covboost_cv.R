@@ -1,14 +1,13 @@
 ## Copyright (C) 2020 Berent Lunde
 ## License: GPL-3
 
-# covboost_cv
-
 #' Add together two numbers
 #'
 #' @param x An \code{n x p} matrix or data frame of dimensions n
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
-#' @nfold The number of folds for k-fold cross validation
+#' @param nfolds The number of folds for k-fold cross validation
+#'
 #' @return A list of useful cross validation information from boosting out the covariance matrix
 #' @examples
 #' add(1, 1)
