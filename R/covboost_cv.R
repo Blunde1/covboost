@@ -3,7 +3,7 @@
 
 #' Add together two numbers
 #'
-#' @param x An \code{n x p} matrix or data frame of dimensions n
+#' @param x An \code{n x p} numeric matrix or data frame
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
 #' @param nfolds The number of folds for k-fold cross validation
@@ -12,6 +12,8 @@
 #' @examples
 #' add(1, 1)
 #' add(10, 1)
+#' @rdname covboost_cv
+#' @export
 covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
 {
     # Boosts out a covariance matrix from the Identity matrix
