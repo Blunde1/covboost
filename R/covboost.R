@@ -25,6 +25,8 @@
 #' sigma$cov
 #' sigma$plot
 #' }
+#' @importFrom stats cov cov2cor quantile
+#' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost
 #' @export
 covboost <- function(x, learning_rate=0.01, niter=1000)
@@ -40,6 +42,8 @@ covboost <- function(x, learning_rate=0.01, niter=1000)
     # niter: max number of iterations
 
     # see CV version for comments on almost identical code
+
+    `10-fold cv` <- cv <- Var1 <- Var2 <- iterations <- qlower <- qupper <- value <- NULL
 
     n <- nrow(x)
     p <- ncol(x)
@@ -76,7 +80,7 @@ covboost <- function(x, learning_rate=0.01, niter=1000)
     close(pb)
 
     if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("reshape2", quietly = TRUE)) {
-        cov_heatmap <- function(cov_, title=""){
+        .cov_heatmap <- function(cov_, title=""){
             # Get upper triangle of the correlation matrix
             get_upper_tri <- function(cormat){
                 cormat[lower.tri(cormat)]<- NA
@@ -101,7 +105,7 @@ covboost <- function(x, learning_rate=0.01, niter=1000)
             #coord_fixed()
         }
 
-        p <- cov_heatmap(cov2cor(B), "Boosted Correlation Matrix")
+        p <- .cov_heatmap(cov2cor(B), "Boosted Correlation Matrix")
 
     } else {
         p <- cat("Install ggplo2 and reshape2 packages to get cov boosting \n")

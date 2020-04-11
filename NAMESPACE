@@ -2,3 +2,8 @@
 
 export(covboost)
 export(covboost_cv)
+importFrom(stats,cov)
+importFrom(stats,cov2cor)
+importFrom(stats,quantile)
+importFrom(utils,setTxtProgressBar)
+importFrom(utils,txtProgressBar)

@@ -27,6 +27,8 @@
 #' cov_cv$opt_iter
 #' }
 #'
+#' @importFrom stats cov cov2cor quantile
+#' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost_cv
 #' @export
 covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
@@ -41,6 +43,9 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
     # learning_rate: shrink each step
     # niter: max number of iterations
     # nfolds: number of folds in CV
+
+    `10-fold cv` <- cv <- Var1 <- Var2 <- iterations <- qlower <- qupper <- value <- NULL
+
 
     n <- nrow(x)
     p <- ncol(x)
@@ -97,39 +102,39 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
 
     # update niter and create data
     niter <- nrow(cv_nll)
-    df <- data.frame(1:niter, cv_nll_mean[1:niter])
-    df2 <- data.frame(1:niter, cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
-    names(df) <- c("iterations", "10-fold cv")
-    names(df2) <- c("iterations", "qupper", "qlower")
+    .df <- data.frame(1:niter, cv_nll_mean[1:niter])
+    .df2 <- data.frame(1:niter, cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
+    names(.df) <- c("iterations", "10-fold cv")
+    names(.df2) <- c("iterations", "qupper", "qlower")
 
     # CV loss vs iterations plot
     cat("preparing loss...\n")
     cbp2 <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
               "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-    names(cbp2) <- colnames(df)
-    opt_iter = df[which.min(df$`10-fold cv`), "iterations"]
+    names(cbp2) <- colnames(.df)
+    opt_iter = .df[which.min(.df$`10-fold cv`), "iterations"]
 
     if (requireNamespace("ggplot2", quietly = TRUE)) {
-        p <- ggplot2::ggplot(data=df) +
+        .p <- ggplot2::ggplot(data=.df) +
             ggplot2::geom_point(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
             ggplot2::geom_line(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
-            ggplot2::geom_ribbon(data=df2, ggplot2::aes(iterations, ymax=qupper, ymin=qlower), fill=cbp2[2], alpha=0.5) +
+            ggplot2::geom_ribbon(data=.df2, ggplot2::aes(iterations, ymax=qupper, ymin=qlower), fill=cbp2[2], alpha=0.5) +
             ggplot2::geom_vline(xintercept=opt_iter, size=1) +
             ggplot2::xlab("Iteration") +
             ggplot2::ylab("Gaussian loss") +
             ggplot2::ggtitle("Gaussian CV Loss Versus Iterations") +
             ggplot2::theme_bw()
     } else {
-        p <- cat("Install ggplo2 package to get cv-plots \n")
+        .p <- cat("Install ggplo2 package to get cv-plots \n")
     }
 
     cat("preparing results...\n")
-    res_data <- data.frame(1:niter, cv_nll_mean[1:niter], cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
-    names(res_data) <- c("iterations", "cv-mean", "cv_6_quantile", "cv_4_quantile")
+    .res_data <- data.frame(1:niter, cv_nll_mean[1:niter], cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
+    names(.res_data) <- c("iterations", "cv-mean", "cv_6_quantile", "cv_4_quantile")
     res <- list(
         opt_iter = opt_iter,
-        cvplot = p,
-        data = res_data
+        cvplot = .p,
+        data = .res_data
     )
     return(res)
 
