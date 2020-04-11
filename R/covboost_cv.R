@@ -10,8 +10,23 @@
 #'
 #' @return A list of useful cross validation information from boosting out the covariance matrix
 #' @examples
-#' add(1, 1)
-#' add(10, 1)
+#' \dontrun{
+#' ## Generate data with random correlation
+#' p <- 50
+#' n <- 50
+#' x <- matrix(nrow=n, ncol=p)
+#' x[,1] <- rnorm(n)
+#' for(j in 2:p){
+#'     rho <- runif(1,-1,1)*rbinom(1,1,0.5)
+#'     col_dependence <- sample(j-1,1)
+#'     x[,j] <- rnorm(n, mean=rho*x[,col_dependence], sd=(1-rho^2))
+#' }
+#' lrn_rate <- 0.2
+#' cov_cv <- covboost_cv(x, learning_rate=lrn_rate)
+#' cov_cv$cvplot
+#' cov_cv$opt_iter
+#' }
+#'
 #' @rdname covboost_cv
 #' @export
 covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
@@ -35,7 +50,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
     stops <- rep(niter, nfolds)
 
     cat("starting boosting...\n")
-    pb <- txtProgressBar(min=0, max=niter*k, style=3)
+    pb <- txtProgressBar(min=0, max=niter*nfolds, style=3)
     for(k in 1:nfolds)
     {
         Bk <- diag(p)
@@ -50,7 +65,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
 
             Bk[ind] <- Bk[ind] + learning_rate*Dk[ind]
 
-            cvnll_i_k <- -sum(dmvnorm(x[holdout[[k]],], rep(0,p), Bk, log = TRUE))
+            cvnll_i_k <- -sum(mvtnorm::dmvnorm(x[holdout[[k]],], rep(0,p), Bk, log = TRUE))
 
             # checks
             if(!is.finite(cvnll_i_k)) {
@@ -93,20 +108,24 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
               "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
     names(cbp2) <- colnames(df)
     opt_iter = df[which.min(df$`10-fold cv`), "iterations"]
-    p <- df %>% #gather(type, `gaussian nll`, `10-fold cv`, factor_key = TRUE) %>%
-        ggplot() +
-        geom_point(aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
-        geom_line(aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
-        geom_ribbon(data=df2, aes(iterations, ymax=qupper, ymin=qlower), fill=cbp2[2], alpha=0.5) +
-        geom_vline(xintercept=opt_iter, size=1) +
-        xlab("Iteration") +
-        ylab("Gaussian loss") +
-        ggtitle("Gaussian CV Loss Versus Iterations") +
-        theme_bw()
+
+    if (requireNamespace("ggplot2", quietly = TRUE)) {
+        p <- ggplot2::ggplot(data=df) +
+            ggplot2::geom_point(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
+            ggplot2::geom_line(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
+            ggplot2::geom_ribbon(data=df2, ggplot2::aes(iterations, ymax=qupper, ymin=qlower), fill=cbp2[2], alpha=0.5) +
+            ggplot2::geom_vline(xintercept=opt_iter, size=1) +
+            ggplot2::xlab("Iteration") +
+            ggplot2::ylab("Gaussian loss") +
+            ggplot2::ggtitle("Gaussian CV Loss Versus Iterations") +
+            ggplot2::theme_bw()
+    } else {
+        p <- cat("Install ggplo2 package to get cv-plots \n")
+    }
 
     cat("preparing results...\n")
-    res_data <- data.frame(1:niter, cv_nll[1:niter], cv_nll_u[1:niter], cv_nll_l[1:niter])
-    names(res_data) <- c("iterations", "cv-mean", "cv_75_quantile", "cv_25_quantile")
+    res_data <- data.frame(1:niter, cv_nll_mean[1:niter], cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
+    names(res_data) <- c("iterations", "cv-mean", "cv_6_quantile", "cv_4_quantile")
     res <- list(
         opt_iter = opt_iter,
         cvplot = p,

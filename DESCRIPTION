@@ -9,6 +9,6 @@ Description: More about what it does (maybe more than one line)
 License: GPL (>= 2)
 Encoding: UTF-8
 Imports: mvtnorm
-Suggests: ggplot2
+Suggests: ggplot2, reshape2
 LazyData: true
 RoxygenNote: 6.1.1
