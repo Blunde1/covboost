@@ -35,8 +35,8 @@ for(j in 2:p){
 }
 lrn_rate <- 0.2
 cov_cv <- covboost_cv(x, learning_rate=lrn_rate)
-con_cv$cvplot
-con_cv$opt_iter
+cov_cv$cvplot
+cov_cv$opt_iter
 }
 
 }
