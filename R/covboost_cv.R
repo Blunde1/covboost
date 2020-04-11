@@ -1,7 +1,7 @@
 ## Copyright (C) 2020 Berent Lunde
 ## License: GPL-3
 
-#' Add together two numbers
+#' Boosted Covariance Matrix Estimation With Boosting
 #'
 #' @param x An \code{n x p} numeric matrix or data frame
 #' @param learning_rate Scaling the path of elements in the covariance matrix

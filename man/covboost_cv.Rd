@@ -2,7 +2,7 @@
 % Please edit documentation in R/covboost_cv.R
 \name{covboost_cv}
 \alias{covboost_cv}
-\title{Add together two numbers}
+\title{Boosted Covariance Matrix Estimation With Boosting}
 \usage{
 covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10)
 }
@@ -19,7 +19,7 @@ covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10)
 A list of useful cross validation information from boosting out the covariance matrix
 }
 \description{
-Add together two numbers
+Boosted Covariance Matrix Estimation With Boosting
 }
 \examples{
 add(1, 1)
