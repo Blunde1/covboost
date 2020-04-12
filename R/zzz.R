@@ -2,7 +2,7 @@
 #'
 #' \code{covboost} estimates covariance matrices through boosting.
 #' This allows automatic sparsity detection. The biggest benefits are perhaps
-#' for high dimensional \code{p>>n} problems.
+#' for high dimensional \code{p>>n} problems. Imports RcppArmadillo and OpenMP.
 #'
 #' Important functions:
 #'
