@@ -53,7 +53,7 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000)
     p <- ncol(x)
 
     nll <- numeric(niter)
-    stops <- niter
+    stops <- niter+1
 
     # Matrices
     I <- B_rho <- diag(p)
@@ -64,22 +64,24 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000)
     dA_rho <- cov2cor(dA)
 
     cat("starting boosting...\n")
-    pb <- txtProgressBar(min=0, max=niter, style=3)
+    pb <- txtProgressBar(min=0, max=niter+1, style=3)
 
-    for(i in 1:niter)
-    {
-        # max diff
-        dD_rho <- dA_rho - B_rho
-        ind <- which(abs(dD_rho)==max(abs(dD_rho)), arr.ind=T)
+    if(niter>1){
+        for(i in 2:(niter+1))
+        {
+            # max diff
+            dD_rho <- dA_rho - B_rho
+            ind <- which(abs(dD_rho)==max(abs(dD_rho)), arr.ind=T)
 
-        # update
-        B_rho[ind] <- B_rho[ind] + learning_rate*dD_rho[ind]
+            # update
+            B_rho[ind] <- B_rho[ind] + learning_rate*dD_rho[ind]
 
-        # Does not need check -- I think...!
+            # Does not need check -- I think...!
 
-        setTxtProgressBar(pb, value=i)
+            setTxtProgressBar(pb, value=i)
+        }
+        close(pb)
     }
-    close(pb)
 
     # transform to final matrix
     B <- sqrt(dV) %*% B_rho %*% sqrt(dV)

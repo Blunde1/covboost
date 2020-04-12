@@ -58,12 +58,12 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     I <- diag(p) # identity matrix
     delta <- seq(0,1-0.01,by=0.01)
     num_d <- length(delta)
-    stops <- rep(num_d, nfolds)
-    cv_nll_var <- matrix(nrow=niter, ncol=nfolds)
-    cv_nll_var_k <- numeric(num_d)
+    stops <- rep((num_d+1), nfolds)
+    cv_nll_var <- matrix(nrow=num_d+1, ncol=nfolds)
+    cv_nll_var_k <- numeric(num_d+1)
 
     cat("stage 1: boosting out variances...\n")
-    pb <- txtProgressBar(min=0, max=num_d*nfolds, style=3)
+    pb <- txtProgressBar(min=0, max=(num_d+1)*nfolds, style=3)
     for(k in 1:nfolds)
     {
         # define holdout set
@@ -72,10 +72,12 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
         # Starting matrices
         Ak <- cov(x[-holdout[[k]],])
         Vk <- diag(diag(Ak)) # only variances matrix
-        for(i in 1:num_d)
+        cv_nll_var_k[1] <- NA
+        cv_nll_var_k[1] <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), I, logd = TRUE, cores=cores)), silent = T)
+        for(i in 2:(num_d+1))
         {
             # shrink Vk
-            d <- delta[i]
+            d <- delta[i-1]
             Bk <- d*Vk + (1-d)*I
 
             # Evaluate Gaussian nll on holdout
@@ -85,7 +87,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
             # checks
             if(!is.finite(cv_nll_var_k_i)) {
                 # fill remaining
-                cv_nll_var_k[i:num_d] <- cv_nll_var_k[i-1]
+                cv_nll_var_k[i:(num_d+1)] = cv_nll_var_k[i-1]
                 # get stop-point
                 stops[k] <- i-1
                 #cat("stopping at iteration: ", i, "\n",
@@ -96,7 +98,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
                 cv_nll_var_k[i] <- cv_nll_var_k_i
             }
 
-            setTxtProgressBar(pb, value=(k-1)*num_d+i)
+            setTxtProgressBar(pb, value=(k-1)*(num_d+1)+i)
 
         }
 
@@ -109,11 +111,11 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
 
     # Now for second stage
     cat("stage 2: boosting out correlations...\n")
-    cv_nll_cor_k <- numeric(niter)
-    cv_nll_cor <- matrix(nrow=niter, ncol=nfolds)
-    stops <- rep(niter, nfolds)
+    cv_nll_cor_k <- numeric(niter+1)
+    cv_nll_cor <- matrix(nrow=niter+1, ncol=nfolds)
+    stops <- rep(niter+1, nfolds)
 
-    pb <- txtProgressBar(min=0, max=niter*nfolds, style=3)
+    pb <- txtProgressBar(min=0, max=(niter+1)*nfolds, style=3)
     for(k in 1:nfolds)
     {
         # define holdout set
@@ -124,8 +126,11 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
         eDiag <- sqrt(diag(diag(dAk)))
         Ak_rho <- cov2cor(dAk)
         Bk_rho <- I # Identity: inverse of diagonal variance matrix
+        Bk <- eDiag %*% Bk_rho %*% eDiag # = Vk = diag(diag(Ak))
+        cv_nll_cor_k[1] <- NA
+        cv_nll_cor_k[1] <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
 
-        for(i in 1:niter)
+        for(i in 2:(niter+1))
         {
             # difference
             Dk_rho <- Ak_rho - Bk_rho
@@ -143,7 +148,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
             # checks
             if(!is.finite(cvnll_i_k)) {
                 # fill remaining
-                cv_nll_cor_k[i:niter] <- cv_nll_cor_k[i-1]
+                cv_nll_cor_k[i:(niter+1)] <- cv_nll_cor_k[i-1]
                 # get stop-point
                 stops[k] <- i-1
                 #cat("stopping at iteration: ", i, "\n",
@@ -163,11 +168,11 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     close(pb)
 
     cat("preparing data...\n")
-    cv_nll <- cv_nll_cor[1:max(stops),]
+    cv_nll <- cv_nll_cor[1:max(stops),,drop=FALSE]
     cv_nll_mean <- rowMeans(cv_nll, na.rm=T)
     cv_nll_qupper <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.6, na.rm = T)})
     cv_nll_qlower <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.4, na.rm=T)})
-    chol_decomp_fails <- stops[which(stops < niter)]
+    chol_decomp_fails <- stops[which(stops < (niter+1))]
 
     # update niter and create data
     niter <- nrow(cv_nll)
