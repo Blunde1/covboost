@@ -7,7 +7,6 @@
 #' @param shrinkage Shrinkage defining the trade-off between the Identity and variance matrices
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
-#' @param cores The number of cores use for parallel computations
 #' @return A list of useful boosting information, most importantly the covariance matrix
 #' @examples
 #' \dontrun{
@@ -33,7 +32,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost
 #' @export
-covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000, cores=1)
+covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates

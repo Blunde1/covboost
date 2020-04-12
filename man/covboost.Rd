@@ -4,16 +4,16 @@
 \alias{covboost}
 \title{Boosted Covariance Matrix Estimation}
 \usage{
-covboost(x, learning_rate = 0.01, niter = 1000, cores = 1)
+covboost(x, shrinkage = 0.1, learning_rate = 0.01, niter = 1000)
 }
 \arguments{
 \item{x}{An \code{n x p} numeric matrix or data frame}
 
+\item{shrinkage}{Shrinkage defining the trade-off between the Identity and variance matrices}
+
 \item{learning_rate}{Scaling the path of elements in the covariance matrix}
 
 \item{niter}{The number of boosting iterations}
-
-\item{cores}{The number of cores use for parallel computations}
 }
 \value{
 A list of useful boosting information, most importantly the covariance matrix
