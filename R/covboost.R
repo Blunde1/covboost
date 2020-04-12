@@ -63,10 +63,9 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000)
     # Standardization
     dA_rho <- cov2cor(dA)
 
-    cat("starting boosting...\n")
-    pb <- txtProgressBar(min=0, max=niter+1, style=3)
-
     if(niter>1){
+        cat("starting boosting...\n")
+        pb <- txtProgressBar(min=0, max=niter+1, style=3)
         for(i in 2:(niter+1))
         {
             # max diff
