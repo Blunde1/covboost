@@ -111,13 +111,20 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
 
     # Now for second stage
     cat("stage 2: boosting out correlations...\n")
+    MAX_CONSECUTIVE_NO_IMPROVEMENT <- 50
+    NO_IMPROVEMENT_COUNTER <- 0
+    BEST <- NULL
     cv_nll_cor_k <- numeric(niter+1)
     cv_nll_cor <- matrix(nrow=niter+1, ncol=nfolds)
     stops <- rep(niter+1, nfolds)
 
+
     pb <- txtProgressBar(min=0, max=(niter+1)*nfolds, style=3)
     for(k in 1:nfolds)
     {
+        # reset counter
+        NO_IMPROVEMENT_COUNTER <- 0
+
         # define holdout set
         holdout <- split(sample(n,n), 1:nfolds)
 
@@ -129,6 +136,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
         Bk <- eDiag %*% Bk_rho %*% eDiag # = Vk = diag(diag(Ak))
         cv_nll_cor_k[1] <- NA
         cv_nll_cor_k[1] <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
+        BEST <- cv_nll_cor_k[1]
 
         for(i in 2:(niter+1))
         {
@@ -157,6 +165,20 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
             }else{
                 #update
                 cv_nll_cor_k[i] <- cvnll_i_k
+
+                # check counter
+                if(cv_nll_cor_k[i]>=BEST){
+                    NO_IMPROVEMENT_COUNTER <- NO_IMPROVEMENT_COUNTER + 1
+                }else{
+                    NO_IMPROVEMENT_COUNTER <- 0
+                }
+            }
+
+            # check counter
+            if(NO_IMPROVEMENT_COUNTER==MAX_CONSECUTIVE_NO_IMPROVEMENT){
+                cv_nll_cor_k[i:(niter+1)] <- cv_nll_cor_k[i-1]
+                stops[k] <- i
+                break
             }
 
             setTxtProgressBar(pb, value=(k-1)*niter+i)
