@@ -120,9 +120,9 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
         holdout <- split(sample(n,n), 1:nfolds)
 
         # starting matrices
-        Ak <- cov(x[-holdout[[k]],]) * d_min_loss
-        eDiag <- sqrt(diag(diag(Ak)))
-        Ak_rho <- cov2cor(Ak)
+        dAk <- cov(x[-holdout[[k]],]) * d_min_loss
+        eDiag <- sqrt(diag(diag(dAk)))
+        Ak_rho <- cov2cor(dAk)
         Bk_rho <- I # Identity: inverse of diagonal variance matrix
 
         for(i in 1:niter)

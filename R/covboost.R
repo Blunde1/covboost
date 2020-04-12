@@ -4,6 +4,7 @@
 #' Boosted Covariance Matrix Estimation
 #'
 #' @param x An \code{n x p} numeric matrix or data frame
+#' @param shrinkage Shrinkage defining the trade-off between the Identity and variance matrices
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
 #' @param cores The number of cores use for parallel computations
@@ -32,7 +33,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost
 #' @export
-covboost <- function(x, learning_rate=0.01, niter=1000, cores=1)
+covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000, cores=1)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
@@ -54,36 +55,34 @@ covboost <- function(x, learning_rate=0.01, niter=1000, cores=1)
     nll <- numeric(niter)
     stops <- niter
 
-    B <- diag(p)
-    A <- cov(x)
+    # Matrices
+    I <- B_rho <- diag(p)
+    dA <- cov(x) * shrinkage
+    dV <- diag(diag(dA))
+
+    # Standardization
+    dA_rho <- cov2cor(dA)
 
     cat("starting boosting...\n")
     pb <- txtProgressBar(min=0, max=niter, style=3)
 
     for(i in 1:niter)
     {
-        D <- A-B
-        ind <- which(abs(D)==max(abs(D)), arr.ind = T)
-        B[ind] <- B[ind] + learning_rate*D[ind]
+        # max diff
+        dD_rho <- dA_rho - B_rho
+        ind <- which(abs(dD_rho)==max(abs(dD_rho)), arr.ind=T)
 
-        nll_tmp <- NA # if try fails
-        nll_tmp <- try(-sum(.dmvnorm_arma_mc(x, rep(0,p), B, logd = TRUE, cores=cores)), silent = T)
-        #nll_tmp <- -sum(mvtnorm::dmvnorm(x, rep(0,p), B, log = TRUE))
+        # update
+        B_rho[ind] <- B_rho[ind] + learning_rate*dD_rho[ind]
 
-        # checks
-        if(!is.finite(nll_tmp)) {
-            stops <- i-1
-            cat("stopping at iteration: ", i, "\n",
-                "updating niter to ", i-1)
-            break
-        }else{
-            #update
-            nll[i] <- nll_tmp
-        }
+        # Does not need check -- I think...!
 
         setTxtProgressBar(pb, value=i)
     }
     close(pb)
+
+    # transform to final matrix
+    B <- sqrt(dV) %*% B_rho %*% sqrt(dV)
 
     if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("reshape2", quietly = TRUE)) {
         .cov_heatmap <- function(cov_, title=""){
@@ -120,6 +119,7 @@ covboost <- function(x, learning_rate=0.01, niter=1000, cores=1)
 
     res <- list(
         cov=B,
+        cor=B_rho,
         niter=stops,
         plot=p
     )
