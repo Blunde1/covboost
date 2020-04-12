@@ -24,13 +24,14 @@ There are two main functions
 - `covboost_cv`: Boosts out the covariance matrix using k-fold cross validation.
 - `covboost`: Boosts out the covariance matrix.
 
-Both functions above runs in parallel (OpenMP), and returns useful information and plots from cross validation and the best (in terms of Gaussian loss) covariance matrix. See the example below.
+The CV function runs in parallel (OpenMP), and returns useful information and plots from cross validation and the best (in terms of Gaussian loss) covariance matrix. See the example below. 
+This is information is in the next step used to run `covboost`, which works on the full dataset.
 
 ```r
 library(covboost)
 
 # -- Generate some Gaussian data with a few (random) non-zero correlations --
-p <- 100
+p <- 50
 n <- 50
 x <- matrix(nrow=n, ncol=p)
 x[,1] <- rnorm(n)
@@ -45,12 +46,14 @@ lrn_rate <- 0.2
 cov_cv <- covboost_cv(x, learning_rate=lrn_rate)
 
 # -- Plot to check convergence --
-cov_cv$cvplot 
+cov_cv$cvplot
 cov_cv$opt_iter
+cov_cv$opt_shrinkage
 
-# -- Run `covboost` with the best iteration --
-sigma <- covboost(x, niter=cov_cv$opt_iter, learning_rate=lrn_rate)
+# -- Run `covboost` with the best iteration and shrinkage --
+sigma <- covboost(x, shrinkage=cov_cv$opt_shrinkage, niter=cov_cv$opt_iter, learning_rate=lrn_rate)
 sigma$cov
+sigma$cor
 sigma$plot # plot (sparse) covariance matrix
 ```
 The code above generates the convergence plot (top), and images of the obtained (sparse) boosted covariance matrix. For reference, here is the ordinary (dense) covariance matrix estimate (bottom right). Note a few significant non-zero correlations in the boosted covariance estimate (bottom left).
