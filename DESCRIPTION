@@ -8,7 +8,8 @@ Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: GPL-3
 Encoding: UTF-8
-Imports: mvtnorm, stats, utils
+Imports: Rcpp (>= 1.0.2)
+LinkingTo: Rcpp, RcppArmadillo
 Suggests: ggplot2, reshape2
 LazyData: true
 RoxygenNote: 6.1.1
