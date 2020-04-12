@@ -60,23 +60,29 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     pb <- txtProgressBar(min=0, max=niter*nfolds, style=3)
     for(k in 1:nfolds)
     {
-        Bk <- diag(p)
+        # define holdout set
         holdout <- split(sample(n,n), 1:nfolds)
+
+        Bk <- diag(p) # this is updated
+        Ak <- cov(x[-holdout[[k]],])
 
         for(i in 1:niter)
         {
-            Ak <- cov(x[-holdout[[k]],])
 
             Dk <- Ak - Bk
             ind <- which(abs(Dk)==max(abs(Dk)), arr.ind=T)
 
             Bk[ind] <- Bk[ind] + learning_rate*Dk[ind]
 
-            cvnll_i_k <- -sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores))
+            cvnll_i_k <- NA # default if fails
+            cvnll_i_k <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
             #cvnll_i_k <- -sum(mvtnorm::dmvnorm(x[holdout[[k]],], rep(0,p), Bk, log = TRUE))
 
             # checks
             if(!is.finite(cvnll_i_k)) {
+                # fill remaining
+                cv_nll_k[i:niter] <- cv_nll_k[i-1]
+                # get stop-point
                 stops[k] <- i-1
                 #cat("stopping at iteration: ", i, "\n",
                 #    "updating niter to ", i-1)
@@ -102,6 +108,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     cv_nll_mean <- rowMeans(cv_nll, na.rm=T)
     cv_nll_qupper <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.6, na.rm = T)})
     cv_nll_qlower <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.4, na.rm=T)})
+    chol_decomp_fails <- stops[which(stops < niter)]
 
     # update niter and create data
     niter <- nrow(cv_nll)
@@ -126,7 +133,8 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
             ggplot2::xlab("Iteration") +
             ggplot2::ylab("Gaussian loss") +
             ggplot2::ggtitle("Gaussian CV Loss Versus Iterations") +
-            ggplot2::theme_bw()
+            ggplot2::theme_bw() +
+            ggplot2::geom_vline(xintercept=chol_decomp_fails, size=1, colour="blue")
     } else {
         .p <- cat("Install ggplo2 package to get cv-plots \n")
     }
@@ -137,7 +145,8 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     res <- list(
         opt_iter = opt_iter,
         cvplot = .p,
-        data = .res_data
+        data = .res_data,
+        chol_decomp_fails = chol_decomp_fails
     )
     return(res)
 

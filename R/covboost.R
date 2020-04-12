@@ -66,7 +66,8 @@ covboost <- function(x, learning_rate=0.01, niter=1000, cores=1)
         ind <- which(abs(D)==max(abs(D)), arr.ind = T)
         B[ind] <- B[ind] + learning_rate*D[ind]
 
-        nll_tmp <- -sum(.dmvnorm_arma_mc(x, rep(0,p), B, logd = TRUE, cores=cores))
+        nll_tmp <- NA # if try fails
+        nll_tmp <- try(-sum(.dmvnorm_arma_mc(x, rep(0,p), B, logd = TRUE, cores=cores)), silent = T)
         #nll_tmp <- -sum(mvtnorm::dmvnorm(x, rep(0,p), B, log = TRUE))
 
         # checks
