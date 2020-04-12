@@ -37,8 +37,10 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
     # Optimal covariance matrix is likely reached some iterations before this
+    # Two-stage approach: 1. Boost out variance matrix 2. Boost out correlation matrix
 
-    # requires: mvtnorm, ggplot2
+
+    # requires: ggplot2
 
     # x: data
     # learning_rate: shrink each step
@@ -51,41 +53,39 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
 
     n <- nrow(x)
     p <- ncol(x)
-    #B <- diag(p) # not updated
 
-    cv_nll_k <- numeric(niter)
-    cv_nll <- matrix(nrow=niter, ncol=nfolds)
-    stops <- rep(niter, nfolds)
+    # Prepare for boosting out variance
+    I <- diag(p) # identity matrix
+    delta <- seq(0,1-0.01,by=0.01)
+    num_d <- length(delta)
+    stops <- rep(num_d, nfolds)
+    cv_nll_var <- matrix(nrow=niter, ncol=nfolds)
+    cv_nll_var_k <- numeric(num_d)
 
-    cat("starting boosting...\n")
-    pb <- txtProgressBar(min=0, max=niter*nfolds, style=3)
+    cat("stage 1: boosting out variances...\n")
+    pb <- txtProgressBar(min=0, max=num_d*nfolds, style=3)
     for(k in 1:nfolds)
     {
         # define holdout set
         holdout <- split(sample(n,n), 1:nfolds)
 
-        Bk <- diag(p) # this is updated
+        # Starting matrices
         Ak <- cov(x[-holdout[[k]],])
-        #Dk <- Ak - B
-
-        for(i in 1:niter)
+        Vk <- diag(diag(Ak)) # only variances matrix
+        for(i in 1:num_d)
         {
+            # shrink Vk
+            d <- delta[i]
+            Bk <- d*Vk + (1-d)*I
 
-            Dk <- Ak - Bk
-            ind <- which(abs(Dk)==max(abs(Dk)), arr.ind=T)
-
-            #step <- learning_rate*Dk[ind]
-            #if(max(step))
-            Bk[ind] <- Bk[ind] + learning_rate*Dk[ind]
-
-            cvnll_i_k <- NA # default if fails
-            cvnll_i_k <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
-            #cvnll_i_k <- -sum(mvtnorm::dmvnorm(x[holdout[[k]],], rep(0,p), Bk, log = TRUE))
+            # Evaluate Gaussian nll on holdout
+            cv_nll_var_k_i<- NA
+            cv_nll_var_k_i <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
 
             # checks
-            if(!is.finite(cvnll_i_k)) {
+            if(!is.finite(cv_nll_var_k_i)) {
                 # fill remaining
-                cv_nll_k[i:niter] <- cv_nll_k[i-1]
+                cv_nll_var_k[i:num_d] <- cv_nll_var_k[i-1]
                 # get stop-point
                 stops[k] <- i-1
                 #cat("stopping at iteration: ", i, "\n",
@@ -93,22 +93,77 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
                 break
             }else{
                 #update
-                cv_nll_k[i] <- cvnll_i_k
+                cv_nll_var_k[i] <- cv_nll_var_k_i
             }
 
-            setTxtProgressBar(pb, value=(k-1)*niter+i)
+            setTxtProgressBar(pb, value=(k-1)*num_d+i)
 
         }
 
-        cv_nll[,k] <- cv_nll_k
+        cv_nll_var[,k] <- cv_nll_var_k
 
+    }
+    close(pb)
+    cv_nll_var_means <- rowMeans(cv_nll_var[1:max(stops),]) # take mean of holdout loss
+    d_min_loss <- delta[which.min(cv_nll_var_means)] # get shrinkage minimizing loss
+
+    # Now for second stage
+    cat("stage 2: boosting out correlations...\n")
+    cv_nll_cor_k <- numeric(niter)
+    cv_nll_cor <- matrix(nrow=niter, ncol=nfolds)
+    stops <- rep(niter, nfolds)
+
+    pb <- txtProgressBar(min=0, max=niter*nfolds, style=3)
+    for(k in 1:nfolds)
+    {
+        # define holdout set
+        holdout <- split(sample(n,n), 1:nfolds)
+
+        # starting matrices
+        Ak <- cov(x[-holdout[[k]],]) * d_min_loss
+        eDiag <- sqrt(diag(diag(Ak)))
+        Ak_rho <- cov2cor(Ak)
+        Bk_rho <- I # Identity: inverse of diagonal variance matrix
+
+        for(i in 1:niter)
+        {
+            # difference
+            Dk_rho <- Ak_rho - Bk_rho
+            # COOL NOTE: POSSIBLE TO HELP WITH GRAPH!!
+            ind <- which(abs(Dk_rho)==max(abs(Dk_rho)), arr.ind=T)
+
+            # update Bk_rho
+            Bk_rho[ind] <- Bk_rho[ind] + learning_rate*Dk_rho[ind]
+
+            # check holdout loss
+            Bk <- eDiag %*% Bk_rho %*% eDiag # transform to correlation
+            cvnll_i_k <- NA # default if fails
+            cvnll_i_k <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
+
+            # checks
+            if(!is.finite(cvnll_i_k)) {
+                # fill remaining
+                cv_nll_cor_k[i:niter] <- cv_nll_cor_k[i-1]
+                # get stop-point
+                stops[k] <- i-1
+                #cat("stopping at iteration: ", i, "\n",
+                #    "updating niter to ", i-1)
+                break
+            }else{
+                #update
+                cv_nll_cor_k[i] <- cvnll_i_k
+            }
+
+            setTxtProgressBar(pb, value=(k-1)*niter+i)
+        }
+
+        cv_nll_cor[,k] <- cv_nll_cor_k
 
     }
     close(pb)
 
     cat("preparing data...\n")
-    # cut of at min stops
-    cv_nll <- cv_nll[1:max(stops),]
+    cv_nll <- cv_nll_cor[1:max(stops),]
     cv_nll_mean <- rowMeans(cv_nll, na.rm=T)
     cv_nll_qupper <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.6, na.rm = T)})
     cv_nll_qlower <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.4, na.rm=T)})
@@ -147,6 +202,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     .res_data <- data.frame(1:niter, cv_nll_mean[1:niter], cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
     names(.res_data) <- c("iterations", "cv-mean", "cv_6_quantile", "cv_4_quantile")
     res <- list(
+        opt_shrinkage = d_min_loss,
         opt_iter = opt_iter,
         cvplot = .p,
         data = .res_data,
