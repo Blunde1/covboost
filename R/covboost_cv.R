@@ -7,6 +7,7 @@
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
 #' @param nfolds The number of folds for k-fold cross validation
+#' @param cores The number of cores use for parallel computations
 #'
 #' @return A list of useful cross validation information from boosting out the covariance matrix
 #' @examples

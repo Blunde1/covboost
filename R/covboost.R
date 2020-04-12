@@ -6,6 +6,7 @@
 #' @param x An \code{n x p} numeric matrix or data frame
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
+#' @param cores The number of cores use for parallel computations
 #' @return A list of useful boosting information, most importantly the covariance matrix
 #' @examples
 #' \dontrun{

@@ -12,6 +12,8 @@ covboost(x, learning_rate = 0.01, niter = 1000, cores = 1)
 \item{learning_rate}{Scaling the path of elements in the covariance matrix}
 
 \item{niter}{The number of boosting iterations}
+
+\item{cores}{The number of cores use for parallel computations}
 }
 \value{
 A list of useful boosting information, most importantly the covariance matrix

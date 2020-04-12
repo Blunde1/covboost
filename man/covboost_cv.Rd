@@ -15,6 +15,8 @@ covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10,
 \item{niter}{The number of boosting iterations}
 
 \item{nfolds}{The number of folds for k-fold cross validation}
+
+\item{cores}{The number of cores use for parallel computations}
 }
 \value{
 A list of useful cross validation information from boosting out the covariance matrix
