@@ -51,6 +51,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
 
     n <- nrow(x)
     p <- ncol(x)
+    #B <- diag(p) # not updated
 
     cv_nll_k <- numeric(niter)
     cv_nll <- matrix(nrow=niter, ncol=nfolds)
@@ -65,6 +66,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
 
         Bk <- diag(p) # this is updated
         Ak <- cov(x[-holdout[[k]],])
+        #Dk <- Ak - B
 
         for(i in 1:niter)
         {
@@ -72,6 +74,8 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
             Dk <- Ak - Bk
             ind <- which(abs(Dk)==max(abs(Dk)), arr.ind=T)
 
+            #step <- learning_rate*Dk[ind]
+            #if(max(step))
             Bk[ind] <- Bk[ind] + learning_rate*Dk[ind]
 
             cvnll_i_k <- NA # default if fails
