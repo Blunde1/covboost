@@ -1,7 +1,7 @@
 ## Copyright (C) 2020 Berent Lunde
 ## License: GPL-3
 
-#' Boosted Covariance Matrix Estimation With Boosting
+#' Boosted Covariance Matrix Estimation With CV
 #'
 #' @param x An \code{n x p} numeric matrix or data frame
 #' @param learning_rate Scaling the path of elements in the covariance matrix
@@ -31,7 +31,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost_cv
 #' @export
-covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
+covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
@@ -43,6 +43,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
     # learning_rate: shrink each step
     # niter: max number of iterations
     # nfolds: number of folds in CV
+    # cores: number of cores used in parallel
 
     `10-fold cv` <- cv <- Var1 <- Var2 <- iterations <- qlower <- qupper <- value <- NULL
 
@@ -70,7 +71,8 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10)
 
             Bk[ind] <- Bk[ind] + learning_rate*Dk[ind]
 
-            cvnll_i_k <- -sum(mvtnorm::dmvnorm(x[holdout[[k]],], rep(0,p), Bk, log = TRUE))
+            cvnll_i_k <- -sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores))
+            #cvnll_i_k <- -sum(mvtnorm::dmvnorm(x[holdout[[k]],], rep(0,p), Bk, log = TRUE))
 
             # checks
             if(!is.finite(cvnll_i_k)) {

@@ -1,4 +1,4 @@
-#' Estimate Covariance Matrices Through Boosting
+#' covboost
 #'
 #' \code{covboost} estimates covariance matrices through boosting.
 #' This allows automatic sparsity detection. The biggest benefits are perhaps
@@ -14,8 +14,10 @@
 #' See individual function documentation for usage.
 #'
 #' @docType package
-#' @name covboost
-#' @title Estimate Covariance Matrices Through Boosting
-#'
 #' @author Berent Ånund Strømnes Lunde
+#' @import Rcpp
+#' @importFrom Rcpp evalCpp
+#' @useDynLib covboost
+#' @name covboost-package
+#' @title Estimate Covariance Matrices Through Boosting
 NULL

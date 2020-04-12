@@ -1,6 +1,8 @@
 ## Copyright (C) 2020 Berent Lunde
 ## License: GPL-3
 
+#' Boosted Covariance Matrix Estimation
+#'
 #' @param x An \code{n x p} numeric matrix or data frame
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
@@ -29,7 +31,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost
 #' @export
-covboost <- function(x, learning_rate=0.01, niter=1000)
+covboost <- function(x, learning_rate=0.01, niter=1000, cores=1)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
@@ -62,7 +64,9 @@ covboost <- function(x, learning_rate=0.01, niter=1000)
         D <- A-B
         ind <- which(abs(D)==max(abs(D)), arr.ind = T)
         B[ind] <- B[ind] + learning_rate*D[ind]
-        nll_tmp <- -sum(mvtnorm::dmvnorm(x, rep(0,p), B, log = TRUE))
+
+        nll_tmp <- -sum(.dmvnorm_arma_mc(x, rep(0,p), B, logd = TRUE, cores=cores))
+        #nll_tmp <- -sum(mvtnorm::dmvnorm(x, rep(0,p), B, log = TRUE))
 
         # checks
         if(!is.finite(nll_tmp)) {

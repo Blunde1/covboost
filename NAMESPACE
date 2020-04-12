@@ -2,8 +2,11 @@
 
 export(covboost)
 export(covboost_cv)
+import(Rcpp)
+importFrom(Rcpp,evalCpp)
 importFrom(stats,cov)
 importFrom(stats,cov2cor)
 importFrom(stats,quantile)
 importFrom(utils,setTxtProgressBar)
 importFrom(utils,txtProgressBar)
+useDynLib(covboost)

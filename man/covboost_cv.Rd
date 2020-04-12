@@ -2,9 +2,10 @@
 % Please edit documentation in R/covboost_cv.R
 \name{covboost_cv}
 \alias{covboost_cv}
-\title{Boosted Covariance Matrix Estimation With Boosting}
+\title{Boosted Covariance Matrix Estimation With CV}
 \usage{
-covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10)
+covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10,
+  cores = 1)
 }
 \arguments{
 \item{x}{An \code{n x p} numeric matrix or data frame}
@@ -19,7 +20,7 @@ covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10)
 A list of useful cross validation information from boosting out the covariance matrix
 }
 \description{
-Boosted Covariance Matrix Estimation With Boosting
+Boosted Covariance Matrix Estimation With CV
 }
 \examples{
 \dontrun{
