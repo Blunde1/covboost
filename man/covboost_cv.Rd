@@ -36,7 +36,7 @@ for(j in 2:p){
     col_dependence <- sample(j-1,1)
     x[,j] <- rnorm(n, mean=rho*x[,col_dependence], sd=(1-rho^2))
 }
-lrn_rate <- 0.2
+lrn_rate <- 0.5
 cov_cv <- covboost_cv(x, learning_rate=lrn_rate)
 cov_cv$cvplot
 cov_cv$opt_iter
