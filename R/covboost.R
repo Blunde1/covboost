@@ -4,7 +4,6 @@
 #' Boosted Covariance Matrix Estimation
 #'
 #' @param x An \code{n x p} numeric matrix
-#' @param shrinkage Shrinkage defining the trade-off between the Identity and variance matrices
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
 #' @return A list of useful boosting information, most importantly the covariance matrix
@@ -33,7 +32,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost
 #' @export
-covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
+covboost <- function(x, learning_rate=0.5, niter=1000)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
@@ -53,7 +52,6 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
     error_messages <- c()
     error_messages_type <- c(
         "x" = "\n Error: x must be a numeric matrix",
-        "shrinkage" = "\n Error: shrinkage must be a number between 0 and 1",
         "lrn_rate" = "\n Error: learning_rate must be a number between 0 and 1",
         "niter" = "\n Error: niter must be an integer >= 1"
     )
@@ -61,14 +59,6 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
     # check x
     if(!is.matrix(x) || !is.numeric(x)){
         error_messages <- c(error_messages, error_messages_type["x"])
-    }
-
-    # shrinkage
-    if(!is.numeric(shrinkage) ||
-       !(length(shrinkage)==1) ||
-       shrinkage < 0 ||
-       shrinkage > 1){
-        error_messages <- c(error_messages, error_messages_type["shrinkage"])
     }
 
     # learning_rate
@@ -100,11 +90,11 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
 
     # Matrices
     I <- B_rho <- diag(p)
-    dA <- shrinkage*cov(x) + (1-shrinkage)*I
-    dV <- diag(diag(dA))
+    A <- cov(x)
+    V <- diag(diag(A))
 
     # Standardization
-    dA_rho <- cov2cor(dA)
+    A_rho <- cov2cor(A)
 
     if(niter>1){
         cat("starting boosting...\n")
@@ -112,11 +102,11 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
         for(i in 2:(niter+1))
         {
             # max diff
-            dD_rho <- dA_rho - B_rho
-            ind <- which(abs(dD_rho)==max(abs(dD_rho)), arr.ind=T)
+            D_rho <- A_rho - B_rho
+            ind <- which(abs(D_rho)==max(abs(D_rho)), arr.ind=T)
 
             # update
-            B_rho[ind] <- B_rho[ind] + learning_rate*dD_rho[ind]
+            B_rho[ind] <- B_rho[ind] + learning_rate*D_rho[ind]
 
             # Does not need check -- I think...!
 
@@ -126,7 +116,7 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
     }
 
     # transform to final matrix
-    B <- sqrt(dV) %*% B_rho %*% sqrt(dV)
+    B <- round(sqrt(V) %*% B_rho %*% sqrt(V), digits=9)
 
     if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("reshape2", quietly = TRUE)) {
         .cov_heatmap <- function(cov_, title=""){
