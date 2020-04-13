@@ -3,7 +3,7 @@
 
 #' Boosted Covariance Matrix Estimation With CV
 #'
-#' @param x An \code{n x p} numeric matrix or data frame
+#' @param x An \code{n x p} numeric matrix
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
 #' @param nfolds The number of folds for k-fold cross validation
@@ -50,7 +50,57 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
 
     `10-fold cv` <- cv <- Var1 <- Var2 <- iterations <- qlower <- qupper <- value <- NULL
 
+    # Check input
+    error_messages <- c()
+    error_messages_type <- c(
+        "x" = "\n Error: x must be a numeric matrix",
+        "lrn_rate" = "\n Error: learning_rate must be a number between 0 and 1",
+        "niter" = "\n Error: niter must be an integer >= 1",
+        "nfolds" = "\n Error: nfolds must be an integer > 1 and <= nrow(x)",
+        "cores" = "\n Error: cores must be an integer >= 1"
+    )
 
+    # check x
+    if(!is.matrix(x) || !is.numeric(x)){
+        error_messages <- c(error_messages, error_messages_type["x"])
+    }
+
+    # learning_rate
+    if(!is.numeric(learning_rate) ||
+       !(length(learning_rate)==1) ||
+       learning_rate < 0 ||
+       learning_rate > 1){
+        error_messages <- c(error_messages, error_messages_type["lrn_rate"])
+    }
+
+    # niter
+    if(!is.numeric(niter) ||
+       length(niter)>1 ||
+       niter < 1){
+        error_messages <- c(error_messages, error_messages_type["niter"])
+    }
+
+    # nfolds
+    if(!is.numeric(nfolds) ||
+       length(nfolds)>1 ||
+       nfolds < 1 ||
+       nfolds > nrow(x)){
+        error_messages <- c(error_messages, error_messages_type["nfolds"])
+    }
+
+    # cores
+    if(!is.numeric(cores) ||
+       length(cores)>1 ||
+       cores < 1){
+        error_messages <- c(error_messages, error_messages_type["cores"])
+    }
+
+    # Any error messages?
+    if(length(error_messages)>0)
+        stop(error_messages)
+
+
+    # Dimensions
     n <- nrow(x)
     p <- ncol(x)
 
@@ -109,7 +159,6 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
     cv_nll_var_means <- rowMeans(cv_nll_var[1:max(stops),]) # take mean of holdout loss
     d_min_loss <- delta[which.min(cv_nll_var_means)] # get shrinkage minimizing loss
     cat("best shrinkage: ", d_min_loss, "\n")
-    cat("cv_nll: ", cv_nll_var_means, "\n")
 
     # Now for second stage
     cat("stage 2: boosting out correlations...\n")

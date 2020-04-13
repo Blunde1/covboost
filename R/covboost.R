@@ -3,7 +3,7 @@
 
 #' Boosted Covariance Matrix Estimation
 #'
-#' @param x An \code{n x p} numeric matrix or data frame
+#' @param x An \code{n x p} numeric matrix
 #' @param shrinkage Shrinkage defining the trade-off between the Identity and variance matrices
 #' @param learning_rate Scaling the path of elements in the covariance matrix
 #' @param niter The number of boosting iterations
@@ -49,6 +49,49 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
 
     `10-fold cv` <- cv <- Var1 <- Var2 <- iterations <- qlower <- qupper <- value <- NULL
 
+    # Check input
+    error_messages <- c()
+    error_messages_type <- c(
+        "x" = "\n Error: x must be a numeric matrix",
+        "shrinkage" = "\n Error: shrinkage must be a number between 0 and 1",
+        "lrn_rate" = "\n Error: learning_rate must be a number between 0 and 1",
+        "niter" = "\n Error: niter must be an integer >= 1"
+    )
+
+    # check x
+    if(!is.matrix(x) || !is.numeric(x)){
+        error_messages <- c(error_messages, error_messages_type["x"])
+    }
+
+    # shrinkage
+    if(!is.numeric(shrinkage) ||
+       !(length(shrinkage)==1) ||
+       shrinkage < 0 ||
+       shrinkage > 1){
+        error_messages <- c(error_messages, error_messages_type["shrinkage"])
+    }
+
+    # learning_rate
+    if(!is.numeric(learning_rate) ||
+       !(length(learning_rate)==1) ||
+       learning_rate < 0 ||
+       learning_rate > 1){
+        error_messages <- c(error_messages, error_messages_type["lrn_rate"])
+    }
+
+    # niter
+    if(!is.numeric(niter) ||
+       length(niter)>1 ||
+       niter < 1){
+        error_messages <- c(error_messages, error_messages_type["niter"])
+    }
+
+    # Any error messages?
+    if(length(error_messages)>0)
+        stop(error_messages)
+
+
+    # Dimensions
     n <- nrow(x)
     p <- ncol(x)
 

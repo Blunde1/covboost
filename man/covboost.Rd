@@ -7,7 +7,7 @@
 covboost(x, shrinkage = 0.1, learning_rate = 0.5, niter = 1000)
 }
 \arguments{
-\item{x}{An \code{n x p} numeric matrix or data frame}
+\item{x}{An \code{n x p} numeric matrix}
 
 \item{shrinkage}{Shrinkage defining the trade-off between the Identity and variance matrices}
 

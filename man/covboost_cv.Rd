@@ -8,7 +8,7 @@ covboost_cv(x, learning_rate = 0.5, niter = 1000, nfolds = 10,
   cores = 1)
 }
 \arguments{
-\item{x}{An \code{n x p} numeric matrix or data frame}
+\item{x}{An \code{n x p} numeric matrix}
 
 \item{learning_rate}{Scaling the path of elements in the covariance matrix}
 
