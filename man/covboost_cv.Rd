@@ -4,7 +4,7 @@
 \alias{covboost_cv}
 \title{Boosted Covariance Matrix Estimation With CV}
 \usage{
-covboost_cv(x, learning_rate = 0.01, niter = 1000, nfolds = 10,
+covboost_cv(x, learning_rate = 0.5, niter = 1000, nfolds = 10,
   cores = 1)
 }
 \arguments{

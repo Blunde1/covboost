@@ -32,7 +32,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost_cv
 #' @export
-covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
+covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
@@ -108,9 +108,11 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
     close(pb)
     cv_nll_var_means <- rowMeans(cv_nll_var[1:max(stops),]) # take mean of holdout loss
     d_min_loss <- delta[which.min(cv_nll_var_means)] # get shrinkage minimizing loss
+    cat("best shrinkage: ", d_min_loss, "\n")
 
     # Now for second stage
     cat("stage 2: boosting out correlations...\n")
+
     MAX_CONSECUTIVE_NO_IMPROVEMENT <- 50
     NO_IMPROVEMENT_COUNTER <- 0
     BEST <- NULL
@@ -129,7 +131,7 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
         holdout <- split(sample(n,n), 1:nfolds)
 
         # starting matrices
-        dAk <- cov(x[-holdout[[k]],]) * d_min_loss
+        dAk <- d_min_loss*cov(x[-holdout[[k]],]) + (1-d_min_loss)*I
         eDiag <- sqrt(diag(diag(dAk)))
         Ak_rho <- cov2cor(dAk)
         Bk_rho <- I # Identity: inverse of diagonal variance matrix
@@ -235,6 +237,8 @@ covboost_cv <- function(x, learning_rate=0.01, niter=1000, nfolds=10, cores=1)
         data = .res_data,
         chol_decomp_fails = chol_decomp_fails
     )
+
+
     return(res)
 
 }

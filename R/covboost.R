@@ -33,7 +33,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @rdname covboost
 #' @export
-covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000)
+covboost <- function(x, shrinkage=0.1, learning_rate=0.5, niter=1000)
 {
     # Boosts out a covariance matrix from the Identity matrix
     # for p>>n matrix will become singular. The function notices this and terminates
@@ -57,7 +57,7 @@ covboost <- function(x, shrinkage=0.1, learning_rate=0.01, niter=1000)
 
     # Matrices
     I <- B_rho <- diag(p)
-    dA <- cov(x) * shrinkage
+    dA <- shrinkage*cov(x) + (1-shrinkage)*I
     dV <- diag(diag(dA))
 
     # Standardization

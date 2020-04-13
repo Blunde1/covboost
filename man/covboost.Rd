@@ -4,7 +4,7 @@
 \alias{covboost}
 \title{Boosted Covariance Matrix Estimation}
 \usage{
-covboost(x, shrinkage = 0.1, learning_rate = 0.01, niter = 1000)
+covboost(x, shrinkage = 0.1, learning_rate = 0.5, niter = 1000)
 }
 \arguments{
 \item{x}{An \code{n x p} numeric matrix or data frame}
