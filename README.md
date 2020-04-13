@@ -42,16 +42,15 @@ for(j in 2:p){
 }
 
 # -- Run `covboost_cv` to find the best iteration and check convergence --
-lrn_rate <- 0.2
+lrn_rate <- 0.5
 cov_cv <- covboost_cv(x, learning_rate=lrn_rate)
 
 # -- Plot to check convergence --
 cov_cv$cvplot
 cov_cv$opt_iter
-cov_cv$opt_shrinkage
 
 # -- Run `covboost` with the best iteration and shrinkage --
-sigma <- covboost(x, shrinkage=cov_cv$opt_shrinkage, niter=cov_cv$opt_iter, learning_rate=lrn_rate)
+sigma <- covboost(x, niter=cov_cv$opt_iter, learning_rate=lrn_rate)
 sigma$cov
 sigma$cor
 sigma$plot # plot (sparse) covariance matrix
