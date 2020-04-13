@@ -58,12 +58,12 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
     I <- diag(p) # identity matrix
     delta <- seq(0,1-0.01,by=0.01)
     num_d <- length(delta)
-    stops <- rep((num_d+1), nfolds)
-    cv_nll_var <- matrix(nrow=num_d+1, ncol=nfolds)
-    cv_nll_var_k <- numeric(num_d+1)
+    stops <- rep((num_d), nfolds)
+    cv_nll_var <- matrix(nrow=num_d, ncol=nfolds)
+    cv_nll_var_k <- numeric(num_d)
 
     cat("stage 1: boosting out variances...\n")
-    pb <- txtProgressBar(min=0, max=(num_d+1)*nfolds, style=3)
+    pb <- txtProgressBar(min=0, max=(num_d)*nfolds, style=3)
     for(k in 1:nfolds)
     {
         # define holdout set
@@ -74,10 +74,10 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
         Vk <- diag(diag(Ak)) # only variances matrix
         cv_nll_var_k[1] <- NA
         cv_nll_var_k[1] <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), I, logd = TRUE, cores=cores)), silent = T)
-        for(i in 2:(num_d+1))
+        for(i in 1:(num_d))
         {
             # shrink Vk
-            d <- delta[i-1]
+            d <- delta[i]
             Bk <- d*Vk + (1-d)*I
 
             # Evaluate Gaussian nll on holdout
@@ -87,9 +87,9 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
             # checks
             if(!is.finite(cv_nll_var_k_i)) {
                 # fill remaining
-                cv_nll_var_k[i:(num_d+1)] = cv_nll_var_k[i-1]
+                cv_nll_var_k[i:(num_d)] = cv_nll_var_k[i-1]
                 # get stop-point
-                stops[k] <- i-1
+                stops[k] <- i-1 # will never be at i==1 -> i-1==0, as long as delta[1] ==0
                 #cat("stopping at iteration: ", i, "\n",
                 #    "updating niter to ", i-1)
                 break
@@ -98,7 +98,7 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
                 cv_nll_var_k[i] <- cv_nll_var_k_i
             }
 
-            setTxtProgressBar(pb, value=(k-1)*(num_d+1)+i)
+            setTxtProgressBar(pb, value=(k-1)*(num_d)+i)
 
         }
 
@@ -109,135 +109,149 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
     cv_nll_var_means <- rowMeans(cv_nll_var[1:max(stops),]) # take mean of holdout loss
     d_min_loss <- delta[which.min(cv_nll_var_means)] # get shrinkage minimizing loss
     cat("best shrinkage: ", d_min_loss, "\n")
+    cat("cv_nll: ", cv_nll_var_means, "\n")
 
     # Now for second stage
     cat("stage 2: boosting out correlations...\n")
+    if(d_min_loss == 0){
+        cat("variance matrix is identity, stopping with zero shrinkage and unity niter... \n")
+        msg <- "stopped before covariance boosting \n"
+        res <- list(
+            opt_shrinkage = 0,
+            opt_iter = 1,
+            cvplot = msg,
+            data = msg,
+            chol_decomp_fails = msg
+        )
 
-    MAX_CONSECUTIVE_NO_IMPROVEMENT <- 50
-    NO_IMPROVEMENT_COUNTER <- 0
-    BEST <- NULL
-    cv_nll_cor_k <- numeric(niter+1)
-    cv_nll_cor <- matrix(nrow=niter+1, ncol=nfolds)
-    stops <- rep(niter+1, nfolds)
-
-
-    pb <- txtProgressBar(min=0, max=(niter+1)*nfolds, style=3)
-    for(k in 1:nfolds)
-    {
-        # reset counter
+    }else{
+        MAX_CONSECUTIVE_NO_IMPROVEMENT <- 50
         NO_IMPROVEMENT_COUNTER <- 0
+        BEST <- NULL
+        cv_nll_cor_k <- numeric(niter+1)
+        cv_nll_cor <- matrix(nrow=niter+1, ncol=nfolds)
+        stops <- rep(niter+1, nfolds)
 
-        # define holdout set
-        holdout <- split(sample(n,n), 1:nfolds)
 
-        # starting matrices
-        dAk <- d_min_loss*cov(x[-holdout[[k]],]) + (1-d_min_loss)*I
-        eDiag <- sqrt(diag(diag(dAk)))
-        Ak_rho <- cov2cor(dAk)
-        Bk_rho <- I # Identity: inverse of diagonal variance matrix
-        Bk <- eDiag %*% Bk_rho %*% eDiag # = Vk = diag(diag(Ak))
-        cv_nll_cor_k[1] <- NA
-        cv_nll_cor_k[1] <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
-        BEST <- cv_nll_cor_k[1]
-
-        for(i in 2:(niter+1))
+        pb <- txtProgressBar(min=0, max=(niter+1)*nfolds, style=3)
+        for(k in 1:nfolds)
         {
-            # difference
-            Dk_rho <- Ak_rho - Bk_rho
-            # COOL NOTE: POSSIBLE TO HELP WITH GRAPH!!
-            ind <- which(abs(Dk_rho)==max(abs(Dk_rho)), arr.ind=T)
+            # reset counter
+            NO_IMPROVEMENT_COUNTER <- 0
 
-            # update Bk_rho
-            Bk_rho[ind] <- Bk_rho[ind] + learning_rate*Dk_rho[ind]
+            # define holdout set
+            holdout <- split(sample(n,n), 1:nfolds)
 
-            # check holdout loss
-            Bk <- eDiag %*% Bk_rho %*% eDiag # transform to correlation
-            cvnll_i_k <- NA # default if fails
-            cvnll_i_k <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
+            # starting matrices
+            Ak <- cov(x[-holdout[[k]],])
+            dAk <- d_min_loss*Ak + (1-d_min_loss)*I
+            eDiag <- sqrt(diag(diag(dAk)))
+            invDiag <-
+                Ak_rho <- cov2cor(dAk)
+            Bk_rho <- I # Identity: inverse of diagonal variance matrix
+            Bk <- eDiag %*% Bk_rho %*% eDiag # = Vk = diag(diag(Ak))
+            cv_nll_cor_k[1] <- NA
+            cv_nll_cor_k[1] <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
+            BEST <- cv_nll_cor_k[1]
 
-            # checks
-            if(!is.finite(cvnll_i_k)) {
-                # fill remaining
-                cv_nll_cor_k[i:(niter+1)] <- cv_nll_cor_k[i-1]
-                # get stop-point
-                stops[k] <- i-1
-                #cat("stopping at iteration: ", i, "\n",
-                #    "updating niter to ", i-1)
-                break
-            }else{
-                #update
-                cv_nll_cor_k[i] <- cvnll_i_k
+            for(i in 2:(niter+1))
+            {
+                # difference
+                Dk_rho <- Ak_rho - Bk_rho
+                # COOL NOTE: POSSIBLE TO HELP WITH GRAPH!!
+                ind <- which(abs(Dk_rho)==max(abs(Dk_rho)), arr.ind=T)
+
+                # update Bk_rho
+                Bk_rho[ind] <- Bk_rho[ind] + learning_rate*Dk_rho[ind]
+
+                # check holdout loss
+                Bk <- eDiag %*% Bk_rho %*% eDiag # transform to correlation
+                cvnll_i_k <- NA # default if fails
+                cvnll_i_k <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
+
+                # checks
+                if(!is.finite(cvnll_i_k)) {
+                    # fill remaining
+                    cv_nll_cor_k[i:(niter+1)] <- cv_nll_cor_k[i-1]
+                    # get stop-point
+                    stops[k] <- i-1
+                    #cat("stopping at iteration: ", i, "\n",
+                    #    "updating niter to ", i-1)
+                    break
+                }else{
+                    #update
+                    cv_nll_cor_k[i] <- cvnll_i_k
+
+                    # check counter
+                    if(cv_nll_cor_k[i]>=BEST){
+                        NO_IMPROVEMENT_COUNTER <- NO_IMPROVEMENT_COUNTER + 1
+                    }else{
+                        NO_IMPROVEMENT_COUNTER <- 0
+                    }
+                }
 
                 # check counter
-                if(cv_nll_cor_k[i]>=BEST){
-                    NO_IMPROVEMENT_COUNTER <- NO_IMPROVEMENT_COUNTER + 1
-                }else{
-                    NO_IMPROVEMENT_COUNTER <- 0
+                if(NO_IMPROVEMENT_COUNTER==MAX_CONSECUTIVE_NO_IMPROVEMENT){
+                    cv_nll_cor_k[i:(niter+1)] <- cv_nll_cor_k[i-1]
+                    stops[k] <- i
+                    break
                 }
+
+                setTxtProgressBar(pb, value=(k-1)*niter+i)
             }
 
-            # check counter
-            if(NO_IMPROVEMENT_COUNTER==MAX_CONSECUTIVE_NO_IMPROVEMENT){
-                cv_nll_cor_k[i:(niter+1)] <- cv_nll_cor_k[i-1]
-                stops[k] <- i
-                break
-            }
+            cv_nll_cor[,k] <- cv_nll_cor_k
 
-            setTxtProgressBar(pb, value=(k-1)*niter+i)
+        }
+        close(pb)
+
+        cat("preparing data...\n")
+        cv_nll <- cv_nll_cor[1:max(stops),,drop=FALSE]
+        cv_nll_mean <- rowMeans(cv_nll, na.rm=T)
+        cv_nll_qupper <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.6, na.rm = T)})
+        cv_nll_qlower <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.4, na.rm=T)})
+        chol_decomp_fails <- stops[which(stops < (niter+1))]
+
+        # update niter and create data
+        niter <- nrow(cv_nll)
+        .df <- data.frame(1:niter, cv_nll_mean[1:niter])
+        .df2 <- data.frame(1:niter, cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
+        names(.df) <- c("iterations", "10-fold cv")
+        names(.df2) <- c("iterations", "qupper", "qlower")
+
+        # CV loss vs iterations plot
+        cat("preparing loss...\n")
+        cbp2 <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
+                  "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+        names(cbp2) <- colnames(.df)
+        opt_iter = .df[which.min(.df$`10-fold cv`), "iterations"]
+
+        if (requireNamespace("ggplot2", quietly = TRUE)) {
+            .p <- ggplot2::ggplot(data=.df) +
+                ggplot2::geom_point(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
+                ggplot2::geom_line(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
+                ggplot2::geom_ribbon(data=.df2, ggplot2::aes(iterations, ymax=qupper, ymin=qlower), fill=cbp2[2], alpha=0.5) +
+                ggplot2::geom_vline(xintercept=opt_iter, size=1) +
+                ggplot2::xlab("Iteration") +
+                ggplot2::ylab("Gaussian loss") +
+                ggplot2::ggtitle("Gaussian CV Loss Versus Iterations") +
+                ggplot2::theme_bw() +
+                ggplot2::geom_vline(xintercept=chol_decomp_fails, size=1, colour="blue")
+        } else {
+            .p <- cat("Install ggplo2 package to get cv-plots \n")
         }
 
-        cv_nll_cor[,k] <- cv_nll_cor_k
-
+        cat("preparing results...\n")
+        .res_data <- data.frame(1:niter, cv_nll_mean[1:niter], cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
+        names(.res_data) <- c("iterations", "cv-mean", "cv_6_quantile", "cv_4_quantile")
+        res <- list(
+            opt_shrinkage = d_min_loss,
+            opt_iter = opt_iter,
+            cvplot = .p,
+            data = .res_data,
+            chol_decomp_fails = chol_decomp_fails
+        )
     }
-    close(pb)
-
-    cat("preparing data...\n")
-    cv_nll <- cv_nll_cor[1:max(stops),,drop=FALSE]
-    cv_nll_mean <- rowMeans(cv_nll, na.rm=T)
-    cv_nll_qupper <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.6, na.rm = T)})
-    cv_nll_qlower <- sapply(1:nrow(cv_nll), function(i){quantile(cv_nll[i,], 0.4, na.rm=T)})
-    chol_decomp_fails <- stops[which(stops < (niter+1))]
-
-    # update niter and create data
-    niter <- nrow(cv_nll)
-    .df <- data.frame(1:niter, cv_nll_mean[1:niter])
-    .df2 <- data.frame(1:niter, cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
-    names(.df) <- c("iterations", "10-fold cv")
-    names(.df2) <- c("iterations", "qupper", "qlower")
-
-    # CV loss vs iterations plot
-    cat("preparing loss...\n")
-    cbp2 <- c("#000000", "#E69F00", "#56B4E9", "#009E73",
-              "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-    names(cbp2) <- colnames(.df)
-    opt_iter = .df[which.min(.df$`10-fold cv`), "iterations"]
-
-    if (requireNamespace("ggplot2", quietly = TRUE)) {
-        .p <- ggplot2::ggplot(data=.df) +
-            ggplot2::geom_point(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
-            ggplot2::geom_line(ggplot2::aes(x=iterations, y=`10-fold cv`), colour=cbp2[2]) +
-            ggplot2::geom_ribbon(data=.df2, ggplot2::aes(iterations, ymax=qupper, ymin=qlower), fill=cbp2[2], alpha=0.5) +
-            ggplot2::geom_vline(xintercept=opt_iter, size=1) +
-            ggplot2::xlab("Iteration") +
-            ggplot2::ylab("Gaussian loss") +
-            ggplot2::ggtitle("Gaussian CV Loss Versus Iterations") +
-            ggplot2::theme_bw() +
-            ggplot2::geom_vline(xintercept=chol_decomp_fails, size=1, colour="blue")
-    } else {
-        .p <- cat("Install ggplo2 package to get cv-plots \n")
-    }
-
-    cat("preparing results...\n")
-    .res_data <- data.frame(1:niter, cv_nll_mean[1:niter], cv_nll_qupper[1:niter], cv_nll_qlower[1:niter])
-    names(.res_data) <- c("iterations", "cv-mean", "cv_6_quantile", "cv_4_quantile")
-    res <- list(
-        opt_shrinkage = d_min_loss,
-        opt_iter = opt_iter,
-        cvplot = .p,
-        data = .res_data,
-        chol_decomp_fails = chol_decomp_fails
-    )
-
 
     return(res)
 
