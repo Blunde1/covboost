@@ -117,7 +117,9 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
         NO_IMPROVEMENT_COUNTER <- 0
 
         # define holdout set
+        options(warn=-1)
         holdout <- split(sample(n,n), 1:nfolds)
+        options(warn=0)
 
         # starting matrices
         Ak <- cov(x[-holdout[[k]],])
