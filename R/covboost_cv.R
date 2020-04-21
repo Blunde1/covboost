@@ -146,7 +146,9 @@ covboost_cv <- function(x, learning_rate=0.5, niter=1000, nfolds=10, cores=1)
             # check holdout loss
             Bk <- round(eDiag %*% Bk_rho %*% eDiag, digits=9) # transform to correlation, round ensures symmetry
             cvnll_i_k <- NA # default if fails
+            options(warn=-1) ## Avoid complaining about symmetry: It is precision!
             cvnll_i_k <- try(-sum(.dmvnorm_arma_mc(x[holdout[[k]],], rep(0,p), Bk, logd = TRUE, cores=cores)), silent = T)
+            options(warn=0)
 
             # checks
             if(!is.finite(cvnll_i_k)) {
